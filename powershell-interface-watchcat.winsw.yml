@@ -1,0 +1,16 @@
+id: InterfaceWatchCatService
+name: Interface Watch Cat Service
+description: Check the availability of the network and automatically restart the network adapter. (Just like Openwrt's Watchcat - network watchdog utility)
+env:
+    - name: PSModulePath
+      value: "C:\\Users\\zhang\\Documents\\WindowsPowerShell\\Modules;%PSModulePath%"
+executable: powershell
+arguments: >
+    -ExecutionPolicy Bypass -Command
+    "
+    Write-Output $env:PSModulePath;
+    Import-Module powershell-interface-watchcat -Force;
+    Watch-Cat -WatchInterface 以太网
+    "
+log:
+    mode: append
