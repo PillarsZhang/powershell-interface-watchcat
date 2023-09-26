@@ -62,44 +62,54 @@
 
     $ErrorActionPreference = "Stop"
 
-    $NetIPInterface = (Get-NetIPConfiguration -InterfaceAlias $WatchInterface)
-    if ($NetIPInterface) {
-        $NetIPInterface
+    $WatchNetIPConfiguration = Get-NetIPConfiguration -InterfaceAlias $WatchInterface
+    if ($WatchNetIPConfiguration) {
+        $WatchNetIPConfiguration
     } else {
         throw "Failed to find interface."
     }
 
     if (-not $PingAddress) {
         $GatewayMode = $true
+    } else {
+        $pingDest = $PingAddress
     }
 
     if ($GatewayMode) {
-        $PingAddress = $NetIPInterface.IPv4DefaultGateway.NextHop
-        Write-Log "The default IPV4 gateway for the ""$WatchInterface"" interface is ""$PingAddress"", but it will be reset before each ping."
+        $pingDest = Get-Gateway $WatchInterface
+        if ($pingDest) {
+            Write-Log "The default IPV4 gateway for interface ""$WatchInterface"" is ""$pingDest"", but it will be reset before each ping."
+        } else {
+            Write-Log "Currently unable to retrieve the IPV4 gateway for interface ""$WatchInterface"", it may still be starting up. However, the gateway is reset before each ping. Sleeping 30 seconds..."
+            Start-Sleep -Seconds 30
+            $pingDest = Get-Gateway $WatchInterface
+        }
     }
 
-    try {
-        Test-Connection -ComputerName $PingAddress -Count 1
-    } catch {
-        Write-Log "An error occurred during early ping, but watchcat will continue to run: $($_.Exception.Message)"
+    if ($pingDest) {
+        try {
+            Test-Connection -ComputerName $pingDest -Count 1
+        } catch {
+            Write-Log "An error occurred during early ping, but watchcat will continue to run: $($_.Exception.Message)"
+        }
     }
 
     if ($GatewayMode) {
         Write-Log "Keep watching ""$WatchInterface"" on gateway ..."
     } else {
-        Write-Log "Keep watching ""$WatchInterface"" on ""$PingAddress"" ..."
-    }    
+        Write-Log "Keep watching ""$WatchInterface"" on ""$pingDest"" ..."
+    }
 
     $failedAttempts = 0
     $restartAttempts = 0
 
     while ($true) {
         if ($GatewayMode) {
-            $PingAddress = $NetIPInterface.IPv4DefaultGateway.NextHop
+            $pingDest = Get-Gateway $WatchInterface
         }
 
-        if ($PingAddress) {
-            $pingResult = Test-Connection -ComputerName $PingAddress -Count 1 -Quiet
+        if ($pingDest) {
+            $pingResult = Test-Connection -ComputerName $pingDest -Count 1 -Quiet
             if ($pingResult) {
                 if ($restartAttempts -gt 0) {
                     Write-Log "Connection has been recovered."
@@ -108,7 +118,7 @@
                 $restartAttempts = 0
             } else {
                 $failedAttempts++
-                Write-Log "Ping $PingAddress failed ($failedAttempts/$MaxFailedAttempts)"
+                Write-Log "Ping $pingDest failed ($failedAttempts/$MaxFailedAttempts)"
             }
         } else {
             $failedAttempts++
@@ -118,8 +128,9 @@
         if ($failedAttempts -ge $MaxFailedAttempts) {
             $restartAttempts++
             if ($restartAttempts -le $MaxRestartAttempts) {
-                Write-Log "Restarting network adapter ($restartAttempts/$MaxRestartAttempts)"
-                Restart-NetAdapter -InterfaceAlias $WatchInterface -Confirm:$false
+                $WatchNetAdapter = Get-NetAdapter -InterfaceAlias $WatchInterface
+                Write-Log "Restarting network adapter ""$($WatchNetAdapter.InterfaceDescription)"" ($restartAttempts/$MaxRestartAttempts)"
+                $WatchNetAdapter | Restart-NetAdapter
                 Write-Log "Sleep $RestartDelay seconds ..."
                 Start-Sleep -Seconds $RestartDelay
                 $failedAttempts = 0
@@ -133,22 +144,46 @@
     }
 }
 
+function Get-Gateway {
+<#
+.SYNOPSIS
+    Get the IPv4 default gateway for a specified network interface.
+
+.DESCRIPTION
+    The Get-Gateway function retrieves the IPv4 default gateway (NextHop) for a specified network interface.
+
+.PARAMETER InterfaceAlias
+    Specifies the network interface alias for which to retrieve the gateway.
+
+.EXAMPLE
+    Get-Gateway "Ethernet"
+    Retrieves the IPv4 default gateway for the "Ethernet" network interface.
+#>
+
+    param (
+        [parameter(Mandatory = $true)]
+        [string]$InterfaceAlias
+    )
+    $WatchNetIPConfiguration = Get-NetIPConfiguration -InterfaceAlias $InterfaceAlias
+    return $WatchNetIPConfiguration.IPv4DefaultGateway.NextHop
+}
+
 function Write-Log {
-    <#
-    .SYNOPSIS
-        Writes a log message with a precise millisecond timestamp.
+<#
+.SYNOPSIS
+    Writes a log message with a precise millisecond timestamp.
 
-    .DESCRIPTION
-        The Write-Log function appends a log message with a timestamp to the console output. The timestamp includes the date, time, and milliseconds for precise logging.
+.DESCRIPTION
+    The Write-Log function appends a log message with a timestamp to the console output. The timestamp includes the date, time, and milliseconds for precise logging.
 
-    .PARAMETER Message
-        Specifies the log message to be written.
+.PARAMETER Message
+    Specifies the log message to be written.
 
-    .EXAMPLE
-        Write-Log -Message "This is a log message."
-        Writes a log message with a timestamp to the console output:
-        2023-09-26 10:15:23.456 - This is a log message.
-    #>
+.EXAMPLE
+    Write-Log -Message "This is a log message."
+    Writes a log message with a timestamp to the console output:
+    2023-09-26 10:15:23.456 - This is a log message.
+#>
 
     Param(
         [Parameter(Mandatory=$true)]
