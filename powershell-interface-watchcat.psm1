@@ -75,19 +75,19 @@
 
     if ($GatewayMode) {
         $PingAddress = $NetIPInterface.IPv4DefaultGateway.NextHop
-        Write-Host "The default IPV4 gateway for the ""$WatchInterface"" interface is ""$PingAddress"", but it will be reset before each ping."
+        Write-Log "The default IPV4 gateway for the ""$WatchInterface"" interface is ""$PingAddress"", but it will be reset before each ping."
     }
 
     try {
         Test-Connection -ComputerName $PingAddress -Count 1
     } catch {
-        Write-Host "An error occurred during early ping, but watchcat will continue to run: $($_.Exception.Message)"
+        Write-Log "An error occurred during early ping, but watchcat will continue to run: $($_.Exception.Message)"
     }
 
     if ($GatewayMode) {
-        Write-Host "Keep watching ""$WatchInterface"" on gateway ..."
+        Write-Log "Keep watching ""$WatchInterface"" on gateway ..."
     } else {
-        Write-Host "Keep watching ""$WatchInterface"" on ""$PingAddress"" ..."
+        Write-Log "Keep watching ""$WatchInterface"" on ""$PingAddress"" ..."
     }    
 
     $failedAttempts = 0
@@ -102,25 +102,25 @@
             $pingResult = Test-Connection -ComputerName $PingAddress -Count 1 -Quiet
             if ($pingResult) {
                 if ($restartAttempts -gt 0) {
-                    Write-Host "Connection has been recovered."
+                    Write-Log "Connection has been recovered."
                 }
                 $failedAttempts = 0
                 $restartAttempts = 0
             } else {
                 $failedAttempts++
-                Write-Host "Ping $PingAddress failed ($failedAttempts/$MaxFailedAttempts)"
+                Write-Log "Ping $PingAddress failed ($failedAttempts/$MaxFailedAttempts)"
             }
         } else {
             $failedAttempts++
-            Write-Host "Bad interface or no address ($failedAttempts/$MaxFailedAttempts)"
+            Write-Log "Bad interface or no address ($failedAttempts/$MaxFailedAttempts)"
         }
 
         if ($failedAttempts -ge $MaxFailedAttempts) {
             $restartAttempts++
             if ($restartAttempts -le $MaxRestartAttempts) {
-                Write-Host "Restarting network adapter ($restartAttempts/$MaxRestartAttempts)"
+                Write-Log "Restarting network adapter ($restartAttempts/$MaxRestartAttempts)"
                 Restart-NetAdapter -InterfaceAlias $WatchInterface -Confirm:$false
-                Write-Host "Sleep $RestartDelay seconds ..."
+                Write-Log "Sleep $RestartDelay seconds ..."
                 Start-Sleep -Seconds $RestartDelay
                 $failedAttempts = 0
             } else {
@@ -131,6 +131,34 @@
         }
         
     }
+}
+
+function Write-Log {
+    <#
+    .SYNOPSIS
+        Writes a log message with a precise millisecond timestamp.
+
+    .DESCRIPTION
+        The Write-Log function appends a log message with a timestamp to the console output. The timestamp includes the date, time, and milliseconds for precise logging.
+
+    .PARAMETER Message
+        Specifies the log message to be written.
+
+    .EXAMPLE
+        Write-Log -Message "This is a log message."
+        Writes a log message with a timestamp to the console output:
+        2023-09-26 10:15:23.456 - This is a log message.
+    #>
+
+    Param(
+        [Parameter(Mandatory=$true)]
+        [string]$Message
+    )
+    
+    $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff'
+    $logMessage = "$timestamp - $Message"
+    
+    Write-Host $logMessage
 }
 
 Export-ModuleMember -Function Watch-Cat

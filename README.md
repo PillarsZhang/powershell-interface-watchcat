@@ -22,7 +22,9 @@ Watch-Cat -WatchInterface "以太网"
 $ModulePath = "$Home\Documents\WindowsPowerShell\Modules\powershell-interface-watchcat\"
 New-Item -ItemType Directory -Path $ModulePath -Force
 Copy-Item -Path .\powershell-interface-watchcat.psm1 -Destination $ModulePath -Force
+```
 
+```powershell
 Write-Host "To import the module globally, append follow line to ""$Home\Documents\WindowsPowerShell\profile.ps1"""
 Import-Module powershell-interface-watchcat
 ```
@@ -40,3 +42,5 @@ Invoke-WebRequest -Uri $WinswUri -OutFile ".\powershell-interface-watchcat.winsw
 .\powershell-interface-watchcat.winsw.exe start
 .\powershell-interface-watchcat.winsw.exe status
 ```
+
+Logs are writing to `powershell-interface-watchcat.winsw.out.log`. If there are Chinese characters, use the `GB 2312` encoding.

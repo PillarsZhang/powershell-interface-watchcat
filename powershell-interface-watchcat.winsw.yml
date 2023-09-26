@@ -8,7 +8,6 @@ executable: powershell
 arguments: >
     -ExecutionPolicy Bypass -Command
     "
-    Write-Output $env:PSModulePath;
     Import-Module powershell-interface-watchcat -Force;
     Watch-Cat -WatchInterface 以太网
     "
