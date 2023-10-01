@@ -48,7 +48,7 @@
         [string]$PingAddress,
 
         [Parameter(Mandatory = $false)]
-        [int]$PingDelay = 10,
+        [int]$PingDelay = 20,
 
         [Parameter(Mandatory = $false)]
         [int]$MaxFailedAttempts = 3,
@@ -57,7 +57,7 @@
         [int]$MaxRestartAttempts = 3,
 
         [Parameter(Mandatory = $false)]
-        [int]$RestartDelay = 30
+        [int]$RestartDelay = 60
     )
 
     $ErrorActionPreference = "Stop"
@@ -78,9 +78,9 @@
     if ($GatewayMode) {
         $pingDest = Get-Gateway $WatchInterface
         if ($pingDest) {
-            Write-Log "The default IPV4 gateway for interface ""$WatchInterface"" is ""$pingDest"", but it will be reset before each ping."
+            Write-Log "The default IPV4 gateway for interface ""$WatchInterface"" is ""$pingDest""."
         } else {
-            Write-Log "Currently unable to retrieve the IPV4 gateway for interface ""$WatchInterface"", it may still be starting up. However, the gateway is reset before each ping. Sleeping 30 seconds..."
+            Write-Log "Currently unable to retrieve the IPV4 gateway for interface ""$WatchInterface"", it may still be starting up. Sleeping 30 seconds..."
             Start-Sleep -Seconds 30
             $pingDest = Get-Gateway $WatchInterface
         }
@@ -94,18 +94,16 @@
         }
     }
 
-    if ($GatewayMode) {
-        Write-Log "Keep watching ""$WatchInterface"" on gateway ..."
-    } else {
-        Write-Log "Keep watching ""$WatchInterface"" on ""$pingDest"" ..."
-    }
+    Write-Log "Keep watching ""$WatchInterface"" on ""$pingDest"" ..."
 
     $failedAttempts = 0
     $restartAttempts = 0
 
     while ($true) {
-        if ($GatewayMode) {
+
+        if ($GatewayMode -and ($failedAttempts -gt 0)) {
             $pingDest = Get-Gateway $WatchInterface
+            Write-Log "Reload default IPV4 gateway for interface ""$WatchInterface"" as ""$pingDest""."
         }
 
         if ($pingDest) {
