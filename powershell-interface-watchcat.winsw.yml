@@ -4,7 +4,7 @@ description: Check the availability of the network and automatically restart the
 env:
     - name: PSModulePath
       value: "C:\\Users\\zhang\\Documents\\WindowsPowerShell\\Modules;%PSModulePath%"
-executable: powershell
+executable: pwsh
 arguments: >
     -ExecutionPolicy Bypass -Command
     "

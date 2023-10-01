@@ -33,6 +33,8 @@ Import-Module powershell-interface-watchcat
 
 Install as module first. Modify the `arguments` in `powershell-interface-watchcat.winsw.xml` and `PSModulePath` in `env`. [winsw v2](https://github.com/winsw/winsw/tree/master) required.
 
+Recommend using [pwsh](https://aka.ms/PSWindows) (the latest version of PowerShell) to reduce memory usage. Otherwise, please repleace `pwsh` to `powershell` in `yml` config file.
+
 ```powershell
 # For most users
 $WinswUri = "https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW.NET461.exe"
